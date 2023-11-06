@@ -1,12 +1,18 @@
+// Package main is entry application point
 package main
 
 import (
 	"log"
 	"net/http"
+
+	"github.com/RAprogramm/wsGolangChat/internal/handlers"
 )
 
 func main() {
 	mux := routes()
+
+	log.Println("Starting channel listener")
+	go handlers.ListenForWSChannel()
 
 	log.Println("Starting web server on port 8080")
 
