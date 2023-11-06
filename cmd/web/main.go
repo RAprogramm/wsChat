@@ -12,7 +12,7 @@ func main() {
 	mux := routes()
 
 	log.Println("Starting channel listener")
-	go handlers.ListenForWSChannel()
+	go handlers.ListenToWsChannel()
 
 	log.Println("Starting web server on port 8080")
 

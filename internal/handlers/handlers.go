@@ -14,10 +14,14 @@ import (
 var (
 	wsChan  = make(chan WsPayload)
 	clients = make(map[WebSocketConnection]string)
-	views   = jet.NewSet(
+
+	// views is the jet view set
+	views = jet.NewSet(
 		jet.NewOSFileSystemLoader("./html"),
-		jet.InDevelopmentMode(), // auto refresh template when changed
+		jet.InDevelopmentMode(),
 	)
+
+	// upgradeConnection is the websocket upgrader from gorilla/websockets
 	upgradeConnection = websocket.Upgrader{
 		ReadBufferSize:  1024,
 		WriteBufferSize: 1024,
@@ -25,15 +29,15 @@ var (
 	}
 )
 
-// Home renders the home page.
-func Home(w http.ResponseWriter, _ *http.Request) {
+// Home renders the home page
+func Home(w http.ResponseWriter, r *http.Request) {
 	err := renderPage(w, "home.jet", nil)
 	if err != nil {
 		log.Println(err)
 	}
 }
 
-// WebSocketConnection ...
+// WebSocketConnection struct ...
 type WebSocketConnection struct {
 	*websocket.Conn
 }
@@ -46,7 +50,7 @@ type WsJSONResponse struct {
 	ConnectedUsers []string `json:"connected_users"`
 }
 
-// WsPayload ...
+// WsPayload defines the websocket request from the client
 type WsPayload struct {
 	Action   string              `json:"action"`
 	Username string              `json:"username"`
@@ -74,11 +78,11 @@ func WsEndpoint(w http.ResponseWriter, r *http.Request) {
 		log.Println(err)
 	}
 
-	go ListenForWS(&conn)
+	go ListenForWs(&conn)
 }
 
-// ListenForWS ...
-func ListenForWS(conn *WebSocketConnection) {
+// ListenForWs function ...
+func ListenForWs(conn *WebSocketConnection) {
 	defer func() {
 		if r := recover(); r != nil {
 			log.Println("Error", fmt.Sprintf("%v", r))
@@ -88,9 +92,9 @@ func ListenForWS(conn *WebSocketConnection) {
 	var payload WsPayload
 
 	for {
-		err := conn.ReadJSON(payload)
+		err := conn.ReadJSON(&payload)
 		if err != nil {
-			log.Println(err)
+			// do nothing
 		} else {
 			payload.Conn = *conn
 			wsChan <- payload
@@ -98,26 +102,32 @@ func ListenForWS(conn *WebSocketConnection) {
 	}
 }
 
-// ListenForWSChannel ...
-func ListenForWSChannel() {
+// ListenToWsChannel function ...
+func ListenToWsChannel() {
 	var response WsJSONResponse
 
 	for {
-		event := <-wsChan
+		e := <-wsChan
 
-		switch event.Action {
+		switch e.Action {
 		case "username":
-			// get a list of all users and send it back via boroadcast
-			clients[event.Conn] = event.Username
+			// get a list of all users and send it back via broadcast
+			clients[e.Conn] = e.Username
 			users := getUserList()
 			response.Action = "list_users"
 			response.ConnectedUsers = users
 			broadcastToAll(response)
+		case "left":
+			response.Action = "list_users"
+			delete(clients, e.Conn)
+			users := getUserList()
+			response.ConnectedUsers = users
+			broadcastToAll(response)
 		}
 
-		// response.Action = "Got here"
-		// response.Message = fmt.Sprintf("Some message, and action was %s", event.Action)
-		// broadcastToAll(response)
+		//response.Action = "Got here"
+		//response.Message = fmt.Sprintf("Some message, and action was %s", e.Action)
+		//broadcastToAll(response)
 	}
 }
 
@@ -141,6 +151,7 @@ func broadcastToAll(response WsJSONResponse) {
 	}
 }
 
+// renderPage renders a jet template
 func renderPage(w http.ResponseWriter, tmpl string, data jet.VarMap) error {
 	view, err := views.GetTemplate(tmpl)
 	if err != nil {
