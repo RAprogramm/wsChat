@@ -1,17 +1,23 @@
 <!doctype html>
+<!-- The language is set to English for this HTML document -->
 <html lang="en">
 
 <head>
   <meta charset="UTF-8">
+  <!-- Meta tags for responsive design, scaling the page properly on different devices -->
   <meta name="viewport"
     content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
   <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <!-- Title of the page shown in the browser tab -->
   <title>Home</title>
+  <!-- Link to Bootstrap CSS for styling -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/css/bootstrap.min.css" rel="stylesheet"
     integrity="sha384-giJF6kkoqNQ00vy+HMDP7azOuL0xtbfIcaT9wjKHr8RbDVddVHyTfAAsrekwKmP1" crossorigin="anonymous">
+  <!-- Link to notie CSS for notification styling -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/notie/4.3.1/notie.min.css"
     integrity="sha512-UrjLcAek5jbj1vwGbXkviPHtgSNVNQCedX7cBIMDdSI2iZtUcZcoTh2Sqc8R9mVcijOjFUi1IlxhfrE1uWaIog=="
     crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <!-- Internal style to define the look of the chatbox -->
   <style>
     .chatbox {
       outline: 1px solid silver;
@@ -22,173 +28,69 @@
 </head>
 
 <body>
+  <!-- Container for the main content of the webpage -->
   <div class="container">
+    <!-- Row for the page title -->
     <div class="row">
       <div class="col">
         <h1 class="mt-3">This is the home page</h1>
         <hr>
       </div>
     </div>
+    <!-- Row for the chat interface -->
     <div class="row">
+      <!-- Chat column taking up 8/12 of the width on medium and larger screens -->
       <div class="col-md-8">
         <h3>Chat</h3>
+        <!-- Link to GitHub -->
         <p><a href="https://github.com">Go to GitHub</a></p>
 
+        <!-- Form group for username input -->
         <div class="form-group">
           <label for="username">Username:</label>
           <input type="text" name="username" id="username" class="form-control" autocomplete="off">
         </div>
 
+        <!-- Form group for message input -->
         <div class="form-group">
           <label for="message">Message:</label>
           <input type="text" name="message" id="message" class="form-control" autocomplete="off">
         </div>
 
         <hr>
+        <!-- Button to send the message -->
         <a href="javascript:void(0);" class="btn btn-outline-secondary" id="sendBtn">Send Message</a>
 
         <input type="hidden" name="action" id="action">
 
+        <!-- Div to show the status of the websocket connection -->
         <div id="status" class="mt-2 float-end"></div>
 
+        <!-- Chatbox where messages will be displayed -->
         <div id="output" class="chatbox">
-
         </div>
-
       </div>
+      <!-- Column to display online users, taking up 4/12 of the width on medium and larger screens -->
       <div class="col-md-4">
         <h3>Who's Online</h3>
-
+        <!-- Unordered list to display the usernames of online users -->
         <ul id="online_users">
-
         </ul>
       </div>
     </div>
   </div>
-
 </body>
 
+<!-- Bootstrap's JavaScript bundle with Popper -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/js/bootstrap.bundle.min.js"
   integrity="sha384-ygbV9kiqUc6oa4msXn9868pTtWMgiQaeYH7/t7LECLbyPA2x65Kgf80OJFdroafW" crossorigin="anonymous"></script>
+<!-- notie JavaScript for notifications -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/notie/4.3.1/notie.min.js"
   integrity="sha512-NHRCwRf2LnVSlLDejCA9oS3fG3/FLSQIPCjAWl3M7tVi5wszwr6FxkjotWnQDXLE+aLKcxRrzFDNEgXj9nvkPw=="
   crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-
+<!-- Reconnecting WebSocket script to handle the websocket connections with auto-reconnect -->
 <script src="/static/reconnecting-websocket.min.js"></script>
 
-<script>
-  let socket = null;
-  let o = document.getElementById("output");
-  let userField = document.getElementById("username")
-  let messageField = document.getElementById("message")
-
-  window.onbeforeunload = function () {
-    console.log("Leaving");
-    let jsonData = {};
-    jsonData["action"] = "left";
-    socket.send(JSON.stringify(jsonData));
-  }
-
-  document.addEventListener("DOMContentLoaded", function () {
-    socket = new ReconnectingWebSocket("ws://127.0.0.1:8080/ws", null, {debug: true, reconnectInterval: 3000});
-
-    const offline = `<span class="badge bg-danger">Not connected</span>`
-    const online = `<span class="badge bg-success">Connected</span>`
-    let statusDiv = document.getElementById("status");
-
-    socket.onopen = () => {
-      console.log("Successfully connected");
-      statusDiv.innerHTML = online;
-    }
-
-    socket.onclose = () => {
-      console.log("connection closed");
-      statusDiv.innerHTML = offline;
-    }
-
-    socket.onerror = error => {
-      console.log("there was an error");
-    }
-
-    socket.onmessage = msg => {
-      // console.log(msg);
-      // let j = JSON.parse(msg.data);
-      // console.log(j);
-
-      let data = JSON.parse(msg.data);
-      console.log("Action is", data.action);
-
-      switch (data.action) {
-        case "list_users":
-          let ul = document.getElementById("online_users");
-          while (ul.firstChild) ul.removeChild(ul.firstChild);
-
-          if (data.connected_users.length > 0) {
-            data.connected_users.forEach(function (item) {
-              let li = document.createElement("li");
-              li.appendChild(document.createTextNode(item));
-              ul.appendChild(li);
-            })
-          }
-          break;
-
-        case "broadcast":
-          o.innerHTML = o.innerHTML + data.message + "<br>";
-          break;
-      }
-
-    }
-
-    userField.addEventListener("change", function () {
-      let jsonData = {};
-      jsonData["action"] = "username";
-      jsonData["username"] = this.value;
-      socket.send(JSON.stringify(jsonData));
-    })
-
-    messageField.addEventListener("keydown", function (event) {
-      if (event.code === "Enter") {
-        if (!socket) {
-          console.log("no connection");
-          return false
-        }
-
-        if ((userField.value === "") || (messageField.value === "")) {
-          errorMessage("Fill out username and message");
-          return false;
-        } else {
-          sendMessage()
-        }
-        event.preventDefault();
-        event.stopPropagation();
-      }
-    })
-
-    document.getElementById("sendBtn").addEventListener("click", function () {
-      if ((userField.value === "") || (messageField.value === "")) {
-        errorMessage("Fill out username and message");
-        return false;
-      } else {
-        sendMessage()
-      }
-    })
-  })
-
-  function sendMessage() {
-    let jsonData = {};
-    jsonData['action'] = "broadcast";
-    jsonData['username'] = userField.value;
-    jsonData['message'] = messageField.value;
-    socket.send(JSON.stringify(jsonData))
-    messageField.value = "";
-  }
-
-  function errorMessage(msg) {
-    notie.alert({
-      type: 'error',
-      text: msg
-    })
-  }
-</script>
+<script src="/static/chat.js"></script>
 
 </html>
