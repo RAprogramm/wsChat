@@ -49,7 +49,7 @@
 
         <input type="hidden" name="action" id="action">
 
-        <hr>
+        <div id="status" class="mt-2 float-end"></div>
 
         <div id="output" class="chatbox">
 
@@ -92,12 +92,18 @@
   document.addEventListener("DOMContentLoaded", function () {
     socket = new ReconnectingWebSocket("ws://127.0.0.1:8080/ws", null, {debug: true, reconnectInterval: 3000});
 
+    const offline = `<span class="badge bg-danger">Not connected</span>`
+    const online = `<span class="badge bg-success">Connected</span>`
+    let statusDiv = document.getElementById("status");
+
     socket.onopen = () => {
       console.log("Successfully connected");
+      statusDiv.innerHTML = online;
     }
 
     socket.onclose = () => {
       console.log("connection closed");
+      statusDiv.innerHTML = offline;
     }
 
     socket.onerror = error => {
