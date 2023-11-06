@@ -5,6 +5,8 @@
 ## Start project
 
 ```sh
+git clone https://github.com/RAprogramm/wsChat.git
+cd wsChat
 make
 ```
 
