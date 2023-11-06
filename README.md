@@ -5,7 +5,7 @@
 ## Start project
 
 ```sh
-go run ./...
+make
 ```
 
 ### In this project used:
