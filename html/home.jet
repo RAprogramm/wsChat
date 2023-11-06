@@ -9,6 +9,9 @@
   <title>Home</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/css/bootstrap.min.css" rel="stylesheet"
     integrity="sha384-giJF6kkoqNQ00vy+HMDP7azOuL0xtbfIcaT9wjKHr8RbDVddVHyTfAAsrekwKmP1" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/notie/4.3.1/notie.min.css"
+    integrity="sha512-UrjLcAek5jbj1vwGbXkviPHtgSNVNQCedX7cBIMDdSI2iZtUcZcoTh2Sqc8R9mVcijOjFUi1IlxhfrE1uWaIog=="
+    crossorigin="anonymous" referrerpolicy="no-referrer" />
   <style>
     .chatbox {
       outline: 1px solid silver;
@@ -41,6 +44,9 @@
           <input type="text" name="message" id="message" class="form-control" autocomplete="off">
         </div>
 
+        <hr>
+        <a href="javascript:void(0);" class="btn btn-outline-secondary" id="sendBtn">Send Message</a>
+
         <input type="hidden" name="action" id="action">
 
         <hr>
@@ -64,9 +70,17 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/js/bootstrap.bundle.min.js"
   integrity="sha384-ygbV9kiqUc6oa4msXn9868pTtWMgiQaeYH7/t7LECLbyPA2x65Kgf80OJFdroafW" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/notie/4.3.1/notie.min.js"
+  integrity="sha512-NHRCwRf2LnVSlLDejCA9oS3fG3/FLSQIPCjAWl3M7tVi5wszwr6FxkjotWnQDXLE+aLKcxRrzFDNEgXj9nvkPw=="
+  crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+<script src="/static/reconnecting-websocket.min.js"></script>
 
 <script>
   let socket = null;
+  let o = document.getElementById("output");
+  let userField = document.getElementById("username")
+  let messageField = document.getElementById("message")
 
   window.onbeforeunload = function () {
     console.log("Leaving");
@@ -76,7 +90,7 @@
   }
 
   document.addEventListener("DOMContentLoaded", function () {
-    socket = new WebSocket("ws://127.0.0.1:8080/ws");
+    socket = new ReconnectingWebSocket("ws://127.0.0.1:8080/ws", null, {debug: true, reconnectInterval: 3000});
 
     socket.onopen = () => {
       console.log("Successfully connected");
@@ -111,19 +125,64 @@
             })
           }
           break;
+
+        case "broadcast":
+          o.innerHTML = o.innerHTML + data.message + "<br>";
+          break;
       }
 
     }
 
-
-    let userInput = document.getElementById("username");
-    userInput.addEventListener("change", function () {
+    userField.addEventListener("change", function () {
       let jsonData = {};
       jsonData["action"] = "username";
       jsonData["username"] = this.value;
       socket.send(JSON.stringify(jsonData));
     })
+
+    messageField.addEventListener("keydown", function (event) {
+      if (event.code === "Enter") {
+        if (!socket) {
+          console.log("no connection");
+          return false
+        }
+
+        if ((userField.value === "") || (messageField.value === "")) {
+          errorMessage("Fill out username and message");
+          return false;
+        } else {
+          sendMessage()
+        }
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    })
+
+    document.getElementById("sendBtn").addEventListener("click", function () {
+      if ((userField.value === "") || (messageField.value === "")) {
+        errorMessage("Fill out username and message");
+        return false;
+      } else {
+        sendMessage()
+      }
+    })
   })
+
+  function sendMessage() {
+    let jsonData = {};
+    jsonData['action'] = "broadcast";
+    jsonData['username'] = userField.value;
+    jsonData['message'] = messageField.value;
+    socket.send(JSON.stringify(jsonData))
+    messageField.value = "";
+  }
+
+  function errorMessage(msg) {
+    notie.alert({
+      type: 'error',
+      text: msg
+    })
+  }
 </script>
 
 </html>

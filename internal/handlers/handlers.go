@@ -30,7 +30,7 @@ var (
 )
 
 // Home renders the home page
-func Home(w http.ResponseWriter, r *http.Request) {
+func Home(w http.ResponseWriter, _ *http.Request) {
 	err := renderPage(w, "home.jet", nil)
 	if err != nil {
 		log.Println(err)
@@ -94,7 +94,7 @@ func ListenForWs(conn *WebSocketConnection) {
 	for {
 		err := conn.ReadJSON(&payload)
 		if err != nil {
-			// do nothing
+			log.Println("Error read JSON payload")
 		} else {
 			payload.Conn = *conn
 			wsChan <- payload
@@ -123,18 +123,20 @@ func ListenToWsChannel() {
 			users := getUserList()
 			response.ConnectedUsers = users
 			broadcastToAll(response)
+		case "broadcast":
+			response.Action = "broadcast"
+			response.Message = fmt.Sprintf("<strong>%s</strong>: %s", e.Username, e.Message)
+			broadcastToAll(response)
 		}
-
-		//response.Action = "Got here"
-		//response.Message = fmt.Sprintf("Some message, and action was %s", e.Action)
-		//broadcastToAll(response)
 	}
 }
 
 func getUserList() []string {
 	var userList []string
 	for _, x := range clients {
-		userList = append(userList, x)
+		if x != "" {
+			userList = append(userList, x)
+		}
 	}
 	sort.Strings(userList)
 	return userList
